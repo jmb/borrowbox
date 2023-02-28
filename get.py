@@ -1,6 +1,7 @@
 import os
 from dotenv import load_dotenv
-import requests, json
+import requests, json, csv
+from datetime import date
 from bs4 import BeautifulSoup
 
 load_dotenv()
@@ -46,3 +47,59 @@ for loanType in totalCount.keys():
     loan_history[loanType] = data["loans"]
 
 print(json.dumps(loan_history, indent=2))
+
+
+with open("export.csv", "w", newline="") as csvfile:
+    # GoodReads Export CSV columns (see: https://www.goodreads.com/assets/sample_export.csv)
+    fieldnames = [
+        "Title",
+        "Author",
+        "ISBN",
+        "My Rating",
+        "Average Rating",
+        "Publisher",
+        "Binding",
+        "Year Published",
+        "Original Publication Year",
+        "Date Read",
+        "Date Added",
+        "Shelves",
+        "Bookshelves",
+        "My Review",
+    ]
+    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+    writer.writeheader()
+
+    for loanType in loan_history:
+        for item in loan_history[loanType]:
+            entry_data = {
+                "Title": item["product"]["title"],
+                # "Author" - added below
+                "ISBN": item["product"]["isbn"],
+                # "My Rating" - not used by BorrowBox
+                # "Average Rating" - not used by BorrowBox
+                "Publisher": item["product"]["publisher"],
+                "Binding": item["product"]["format"],
+                "Year Published": date.fromtimestamp(
+                    item["product"]["releaseDate"] / 1000
+                ).year,
+                # "Original Publication Year" - not used by BorrowBox
+                "Date Read": date.fromtimestamp(item["endDate"] / 1000).isoformat(),
+                "Date Added": date.fromtimestamp(item["startDate"] / 1000).isoformat(),
+                "Shelves": "read",
+                # "Bookshelves" - not used by BorrowBox
+                # "My Review" - not used by BorrowBox
+            }
+
+            authors = []
+            for author in item["product"]["authors"]:
+                authors.append(author["name"])
+
+            if len(authors) == 1:
+                entry_data["Author"] = authors[0]
+            elif len(authors) > 1:
+                author_string = ", ".join(authors[:-1])
+                author_string = f"{author_string} & {authors[-1:]}"
+                entry_data["Author"] = author_string
+
+            writer.writerow(entry_data)
