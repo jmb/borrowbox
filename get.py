@@ -50,45 +50,29 @@ print(json.dumps(loan_history, indent=2))
 
 
 with open("export.csv", "w", newline="") as csvfile:
-    # GoodReads Export CSV columns (see: https://www.goodreads.com/assets/sample_export.csv)
+    # Fields from borrowbox that match up with Bookwyrm
+    # Bookwyrm import fields https://github.com/bookwyrm-social/bookwyrm/blob/main/bookwyrm/importers/importer.py
     fieldnames = [
-        "Title",
-        "Author",
-        "ISBN",
-        "My Rating",
-        "Average Rating",
-        "Publisher",
-        "Binding",
-        "Year Published",
-        "Original Publication Year",
-        "Date Read",
-        "Date Added",
-        "Shelves",
-        "Bookshelves",
-        "My Review",
+        "title",
+        "authors",
+        "isbn",
+        "date started",
+        "date finished",
+        "shelf",  # Shelves from Goodreads, Bookwyrm looks for shelf
     ]
+
     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
     writer.writeheader()
 
     for loanType in loan_history:
         for item in loan_history[loanType]:
             entry_data = {
-                "Title": item["product"]["title"],
-                # "Author" - added below
-                "ISBN": item["product"]["isbn"],
-                # "My Rating" - not used by BorrowBox
-                # "Average Rating" - not used by BorrowBox
-                "Publisher": item["product"]["publisher"],
-                "Binding": item["product"]["format"],
-                "Year Published": date.fromtimestamp(
-                    item["product"]["releaseDate"] / 1000
-                ).year,
-                # "Original Publication Year" - not used by BorrowBox
-                "Date Read": date.fromtimestamp(item["endDate"] / 1000).isoformat(),
-                "Date Added": date.fromtimestamp(item["startDate"] / 1000).isoformat(),
-                "Shelves": "read",
-                # "Bookshelves" - not used by BorrowBox
-                # "My Review" - not used by BorrowBox
+                "title": item["product"]["title"],
+                # "authors" - added below
+                "isbn": item["product"]["isbn"],
+                "date started": date.fromtimestamp(item["startDate"] / 1000).isoformat(),
+                "date finished": date.fromtimestamp(item["endDate"] / 1000).isoformat(),
+                "shelf": "read",
             }
 
             authors = []
@@ -96,10 +80,10 @@ with open("export.csv", "w", newline="") as csvfile:
                 authors.append(author["name"])
 
             if len(authors) == 1:
-                entry_data["Author"] = authors[0]
+                entry_data["authors"] = authors[0]
             elif len(authors) > 1:
                 author_string = ", ".join(authors[:-1])
                 author_string = f"{author_string} & {authors[-1:]}"
-                entry_data["Author"] = author_string
+                entry_data["authors"] = author_string
 
             writer.writerow(entry_data)
